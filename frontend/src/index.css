@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-slate-975 text-slate-100 font-sans antialiased min-h-screen;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(251, 191, 36, 0.08), transparent),
+      radial-gradient(ellipse 60% 40% at 100% 0%, rgba(251, 191, 36, 0.04), transparent),
+      radial-gradient(ellipse 60% 40% at 0% 0%, rgba(251, 191, 36, 0.04), transparent);
+  }
+
+  ::selection {
+    @apply bg-amber-500/30 text-amber-100;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900/50;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-600/60 rounded-full hover:bg-slate-500/60 transition-colors;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold rounded-xl
+      transition-all duration-200 shadow-glow-sm hover:shadow-glow
+      active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply px-6 py-3 border border-amber-500/40 text-amber-400 hover:bg-amber-500/10
+      rounded-xl transition-all duration-200 hover:border-amber-500/60;
+  }
+
+  .input-base {
+    @apply w-full px-4 py-3 bg-slate-900/80 border border-slate-700/80 rounded-xl
+      text-slate-100 placeholder-slate-500
+      focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50
+      transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-slate-900/40 rounded-2xl border border-slate-700/50
+      shadow-card hover:shadow-card-hover transition-all duration-300
+      backdrop-blur-sm;
+  }
+
+  .card-static {
+    @apply bg-slate-900/40 rounded-2xl border border-slate-700/50
+      backdrop-blur-sm;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-stagger > * {
+    animation: slideUp 0.5s ease-out backwards;
+  }
+
+  .animate-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+  .animate-stagger > *:nth-child(2) { animation-delay: 0.1s; }
+  .animate-stagger > *:nth-child(3) { animation-delay: 0.15s; }
+  .animate-stagger > *:nth-child(4) { animation-delay: 0.2s; }
+  .animate-stagger > *:nth-child(5) { animation-delay: 0.25s; }
+  .animate-stagger > *:nth-child(6) { animation-delay: 0.3s; }
+}
