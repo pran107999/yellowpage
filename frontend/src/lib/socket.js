@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || '';
+// On Vercel, vercel.json proxies /socket.io to Render. Local dev uses Vite proxy.
+const SOCKET_URL = '';
 const USE_WSS = import.meta.env.VITE_USE_WSS === 'true';
 
 function getSocketOptions() {

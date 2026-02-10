@@ -1,12 +1,8 @@
 import axios from 'axios';
 
-const backendBase = import.meta.env.VITE_BACKEND_URL || '';
-const baseURL = backendBase ? backendBase + '/api' : '/api';
-if (import.meta.env.PROD && !backendBase) {
-  console.warn('[DesiNetwork] VITE_BACKEND_URL is not set. Add it in Vercel → Settings → Environment Variables and redeploy.');
-}
+// On Vercel, vercel.json proxies /api to Render. Local dev uses Vite proxy.
 const api = axios.create({
-  baseURL,
+  baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },
   timeout: 90000, // 90s for Render cold start on free tier
 });
