@@ -1,7 +1,7 @@
 {
-  "name": "yellowpage",
+  "name": "desinetwork",
   "version": "1.0.0",
-  "description": "Yellow Pages classifieds application",
+  "description": "DesiNetwork classifieds application",
   "private": true,
   "workspaces": [
     "backend",
@@ -13,7 +13,10 @@
     "dev:frontend": "cd frontend && npm run dev",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "db:setup": "cd backend && npm run db:setup",
-    "db:seed": "cd backend && npm run db:seed"
+    "db:seed": "cd backend && npm run db:seed",
+    "db:migrate-classified-images": "cd backend && node src/db/migrate-classified-images.js",
+    "db:seed-images": "cd backend && node src/db/seed-images-for-classifieds.js",
+    "db:remove-duplicates": "cd backend && node src/db/remove-duplicate-classifieds.js"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

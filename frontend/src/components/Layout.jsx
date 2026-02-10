@@ -56,7 +56,7 @@ export default function Layout() {
             to="/"
             className="font-display text-2xl text-amber-400 hover:text-amber-300 transition-colors duration-200 tracking-tight"
           >
-            Yellow Page
+            DesiNetwork
           </Link>
           <nav className="flex items-center gap-1 sm:gap-2">
             <Link
@@ -138,7 +138,7 @@ export default function Layout() {
       <footer className="border-t border-slate-800/80 py-8 mt-16 bg-slate-950/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 text-center">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} Yellow Page. All rights reserved.
+            © {new Date().getFullYear()} DesiNetwork. All rights reserved.
           </p>
         </div>
       </footer>

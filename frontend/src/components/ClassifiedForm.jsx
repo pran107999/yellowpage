@@ -1,5 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ACCEPT_TYPES = 'image/jpeg,image/jpg,image/png,image/gif,image/webp';
 
 export default function ClassifiedForm({ cities, initialData, onSubmit, loading }) {
   const { register, handleSubmit, formState: { errors }, watch, setValue } = useForm({
@@ -15,7 +18,14 @@ export default function ClassifiedForm({ cities, initialData, onSubmit, loading 
     },
   });
 
+  const [newImages, setNewImages] = useState([]);
+  const [imageError, setImageError] = useState('');
+  const [removeImageIds, setRemoveImageIds] = useState([]);
   const visibility = watch('visibility');
+
+  const existingImages = (initialData?.images || []).filter(
+    (img) => !removeImageIds.includes(img.id)
+  );
 
   useEffect(() => {
     if (initialData) {
@@ -32,8 +42,32 @@ export default function ClassifiedForm({ cities, initialData, onSubmit, loading 
     setValue('cityIds', next);
   };
 
+  const onFileChange = (e) => {
+    setImageError('');
+    const files = Array.from(e.target.files || []);
+    const oversized = files.filter((f) => f.size > MAX_FILE_SIZE);
+    if (oversized.length > 0) {
+      setImageError(`Some images exceed 10MB. Please choose smaller files.`);
+      return;
+    }
+    setNewImages((prev) => [...prev, ...files].slice(0, 10));
+    e.target.value = '';
+  };
+
+  const removeNewImage = (idx) => {
+    setNewImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const removeExistingImage = (id) => {
+    setRemoveImageIds((prev) => [...prev, id]);
+  };
+
+  const handleFormSubmit = (data) => {
+    onSubmit({ ...data, images: newImages, removeImageIds });
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6 max-w-2xl">
       <div>
         <label className="block text-slate-300 mb-2 font-medium">Title *</label>
         <input
@@ -82,6 +116,58 @@ export default function ClassifiedForm({ cities, initialData, onSubmit, loading 
           <label className="block text-slate-300 mb-2 font-medium">Contact Phone</label>
           <input {...register('contact_phone')} className="input-base" />
         </div>
+      </div>
+      <div>
+        <label className="block text-slate-300 mb-2 font-medium">Images (optional)</label>
+        <p className="text-slate-500 text-sm mb-2">JPEG, PNG, GIF or WebP. Max 10MB per image. Up to 10 images.</p>
+        {existingImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {existingImages.map((img) => (
+              <div key={img.id} className="relative group">
+                <img
+                  src={img.url}
+                  alt=""
+                  className="w-20 h-20 object-cover rounded-lg border border-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeExistingImage(img.id)}
+                  className="absolute inset-0 bg-red-900/70 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-red-200 text-xs font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {newImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {newImages.map((file, idx) => (
+              <div key={idx} className="relative group">
+                <img
+                  src={URL.createObjectURL(file)}
+                  alt=""
+                  className="w-20 h-20 object-cover rounded-lg border border-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeNewImage(idx)}
+                  className="absolute inset-0 bg-red-900/70 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center text-red-200 text-xs font-medium"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <input
+          type="file"
+          accept={ACCEPT_TYPES}
+          multiple
+          onChange={onFileChange}
+          className="block w-full text-sm text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-amber-500/20 file:text-amber-400 file:font-medium hover:file:bg-amber-500/30 file:cursor-pointer"
+        />
+        {imageError && <p className="text-red-400 text-sm mt-1">{imageError}</p>}
       </div>
       <div>
         <label className="block text-slate-300 mb-2 font-medium">Visibility</label>

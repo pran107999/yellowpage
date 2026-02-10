@@ -1,4 +1,4 @@
-# Yellow Page - Complete Documentation
+# DesiNetwork - Complete Documentation
 
 A full-stack classifieds application with real-time updates, modern UI, and secure WebSocket communication.
 
@@ -18,17 +18,20 @@ A full-stack classifieds application with real-time updates, modern UI, and secu
 10. [State Management (TanStack Query)](#state-management-tanstack-query)
 11. [Environment Variables](#environment-variables)
 12. [Scripts](#scripts)
-13. [Security](#security)
+13. [Image Uploads](#image-uploads)
+14. [Security](#security)
+15. [Deployment](#deployment)
 
 ---
 
 ## Overview
 
-Yellow Page is a classifieds platform where users can:
+DesiNetwork is a classifieds platform where users can:
 
 - **Browse** published ads without logging in (with city, category, and search filters)
 - **Register/Login** to post and manage their own ads
 - **Create ads** as drafts and publish when ready
+- **Upload images** (optional, up to 10 images per ad, max 10MB each; stored locally)
 - **Choose visibility** per ad: All cities or Selected cities only
 - **Admin dashboard** for managing users, classifieds, cities, and viewing stats
 - **Real-time sync** across tabs and devices via WebSocket
@@ -39,7 +42,7 @@ Yellow Page is a classifieds platform where users can:
 
 | Layer | Technologies |
 |-------|-------------|
-| **Backend** | Node.js, Express, PostgreSQL, JWT, bcrypt, Socket.io |
+| **Backend** | Node.js, Express, PostgreSQL, JWT, bcrypt, Socket.io, Multer (file uploads) |
 | **Frontend** | React 18, Vite, React Router, Tailwind CSS, React Hook Form, Axios, TanStack Query, Socket.io-client |
 | **Database** | PostgreSQL (raw SQL) |
 | **Real-time** | Socket.io (WebSocket) |
@@ -49,7 +52,7 @@ Yellow Page is a classifieds platform where users can:
 ## Project Structure
 
 ```
-yellowpage/
+desinetwork/
 ├── backend/
 │   ├── src/
 │   │   ├── config/
@@ -60,7 +63,8 @@ yellowpage/
 │   │   │   ├── cityController.js
 │   │   │   └── classifiedController.js
 │   │   ├── middleware/
-│   │   │   └── auth.js            # JWT auth & admin check
+│   │   │   ├── auth.js           # JWT auth & admin check
+│   │   │   └── upload.js         # Multer config (10MB limit, image types)
 │   │   ├── routes/
 │   │   │   ├── admin.js
 │   │   │   ├── auth.js
@@ -69,10 +73,19 @@ yellowpage/
 │   │   ├── db/
 │   │   │   ├── schema.sql         # Table definitions
 │   │   │   ├── setup.js           # Create tables
-│   │   │   └── seed.js            # Seed data (runs once)
+│   │   │   ├── seed.js            # Seed data (runs once)
+│   │   │   ├── migrate-classified-images.js  # Add images table (existing DBs)
+│   │   │   ├── migrate-email-verification.js # Add email verification columns
+│   │   │   ├── fix-broken-images.js          # Fix broken image references
+│   │   │   ├── remove-duplicate-classifieds.js
+│   │   │   ├── seed-images-for-classifieds.js
+│   │   │   └── sync-image-paths.js
+│   │   ├── services/
+│   │   │   └── email.js           # Resend email service (OTP)
 │   │   ├── app.js                 # Express app
 │   │   ├── server.js              # HTTP/HTTPS server + Socket.io
 │   │   └── socket.js              # WebSocket auth, limits, events
+│   ├── uploads/                   # Local image storage (created at runtime)
 │   ├── .env.example
 │   └── package.json
 ├── frontend/
@@ -96,7 +109,8 @@ yellowpage/
 │   │   │   ├── Home.jsx
 │   │   │   ├── Login.jsx
 │   │   │   ├── MyClassifieds.jsx
-│   │   │   └── Register.jsx
+│   │   │   ├── Register.jsx
+│   │   │   └── VerifyEmail.jsx
 │   │   ├── App.jsx
 │   │   ├── index.css
 │   │   └── main.jsx
@@ -121,7 +135,7 @@ yellowpage/
 ### 1. Create database
 
 ```bash
-createdb yellowpage
+createdb desinetwork
 ```
 
 ### 2. Configure environment
@@ -142,6 +156,8 @@ npm run db:seed
 npm run dev
 ```
 
+**Existing databases:** If you ran `db:setup` before image support was added, run `npm run db:migrate-classified-images` once.
+
 - **Backend:** http://localhost:3001  
 - **Frontend:** http://localhost:5173  
 
@@ -149,8 +165,8 @@ npm run dev
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@yellowpage.com | admin123 |
-| User | user@yellowpage.com | user123 |
+| Admin | admin@desinetwork.com | admin123 |
+| User | user@desinetwork.com | user123 |
 
 ---
 
@@ -162,6 +178,7 @@ npm run dev
 - **cities** – id, name, state
 - **classifieds** – id, user_id, title, description, category, contact_email, contact_phone, visibility, status (draft/published)
 - **classified_cities** – junction table for classifieds with selected cities
+- **classified_images** – id, classified_id, file_path, sort_order; stores paths to uploaded images
 
 ### Seed behavior
 
@@ -176,9 +193,10 @@ npm run dev
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/classifieds` | List published classifieds (query: cityId, category, search) |
-| GET | `/api/classifieds/:id` | Get single classified |
+| GET | `/api/classifieds` | List published classifieds (query: cityId, category, search); includes `images` array |
+| GET | `/api/classifieds/:id` | Get single classified; includes `images` array |
 | GET | `/api/cities` | List all cities |
+| GET | `/api/uploads/*` | Static file serving for uploaded images |
 
 ### Auth
 
@@ -194,9 +212,9 @@ npm run dev
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/classifieds/my` | My classifieds |
-| POST | `/api/classifieds` | Create classified |
-| PUT | `/api/classifieds/:id` | Update own classified |
+| GET | `/api/classifieds/my` | My classifieds (includes `images`) |
+| POST | `/api/classifieds` | Create classified (**multipart/form-data**; fields: title, description, category, etc.; optional `images` files) |
+| PUT | `/api/classifieds/:id` | Update own classified (**multipart/form-data**; optional `images`; optional `removeImageIds` JSON array) |
 | DELETE | `/api/classifieds/:id` | Delete own classified |
 
 ### Admin only
@@ -316,13 +334,14 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 | SSL_CERT | Path to cert.pem (optional, for HTTPS) |
 | RESEND_API_KEY | [Resend](https://resend.com) API key for sending OTP emails (optional; if unset, OTP is logged to console) |
 | EMAIL_FROM | From address (default: `onboarding@resend.dev`; use your domain after verifying in Resend) |
-| APP_NAME | App name used in email body (default: Yellow Page) |
+| APP_NAME | App name used in email body (default: DesiNetwork) |
+| LOG_OTP_TO_CONSOLE | Set to `true` to always print verification code in server terminal (for testing) |
 
 ### Frontend
 
 | Variable | Description |
 |----------|-------------|
-| VITE_API_URL | Backend URL (empty = same origin) |
+| VITE_API_URL | Backend base URL (empty = same origin). For cross-origin deployment, set to backend URL; see DEPLOY-SUPABASE.md |
 | VITE_USE_WSS | Set to `true` for secure WebSocket |
 
 ---
@@ -337,7 +356,35 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 | `npm run install:all` | Install all dependencies |
 | `npm run db:setup` | Create database tables |
 | `npm run db:seed` | Seed data (skips if already seeded) |
-| `npm run db:migrate-email-verification` | Add email verification columns to existing `users` table (backend) |
+| `npm run db:migrate-classified-images` | Add `classified_images` table (run once for existing DBs) |
+| `npm run db:seed-images` | Seed sample images for existing classifieds |
+| `npm run db:remove-duplicates` | Remove duplicate classifieds |
+| `cd backend && npm run db:migrate-email-verification` | Add email verification columns to existing `users` table |
+| `cd backend && npm run db:sync-image-paths` | Sync image file paths in database |
+
+---
+
+## Image Uploads
+
+Classifieds support optional image attachments stored in local filesystem.
+
+### Constraints
+
+- **Formats:** JPEG, PNG, GIF, WebP
+- **Size limit:** 10MB per image
+- **Quantity:** Up to 10 images per classified
+- **Storage:** `backend/uploads/classifieds/{classifiedId}/` (created at runtime)
+
+### API
+
+- **Create:** Send `multipart/form-data` with field `images` (one or more files)
+- **Update:** Append new files to `images`; send `removeImageIds` (JSON array of UUIDs) to remove existing images
+- **Response:** Each classified includes `images: [{ id, url }]` where `url` is `/api/uploads/classifieds/{id}/{filename}`
+
+### Frontend
+
+- `ClassifiedForm` includes file input with preview and client-side 10MB validation
+- Images displayed in detail view (responsive grid) and list cards (thumbnail)
 
 ---
 
@@ -349,3 +396,16 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 - Connection limits and idle timeouts on socket
 - Input validation via express-validator
 - CORS restricted to FRONTEND_URL
+
+---
+
+## Deployment
+
+See **[DEPLOY-SUPABASE.md](DEPLOY-SUPABASE.md)** for step-by-step instructions to deploy:
+
+- **Database:** Supabase (PostgreSQL)
+- **Backend:** Render
+- **Frontend:** Vercel
+- **Custom domain:** GoDaddy (optional)
+
+Notes: File uploads on Render free tier use ephemeral storage; consider Supabase Storage for persistent images.

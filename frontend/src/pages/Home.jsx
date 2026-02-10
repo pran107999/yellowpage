@@ -6,7 +6,7 @@ export default function Home() {
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-20 md:py-32">
         <div className="text-center animate-stagger max-w-4xl mx-auto">
           <h1 className="font-display text-5xl sm:text-6xl md:text-7xl lg:text-8xl text-amber-400 mb-6 tracking-tight leading-[1.1]">
-            Yellow Page
+            DesiNetwork
           </h1>
           <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed animate-stagger">
             Discover local businesses, services, and classifieds in your area. Post your ads and reach thousands of potential customers.

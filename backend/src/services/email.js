@@ -1,7 +1,7 @@
 const { Resend } = require('resend');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const APP_NAME = process.env.APP_NAME || 'Yellow Page';
+const APP_NAME = process.env.APP_NAME || 'DesiNetwork';
 // Resend free tier: use onboarding@resend.dev until you verify a domain. Format: "Name <email>"
 const FROM = process.env.EMAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`;
 

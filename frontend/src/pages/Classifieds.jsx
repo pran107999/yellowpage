@@ -77,6 +77,17 @@ export default function Classifieds() {
               to={`/classifieds/${c.id}`}
               className="card block p-6 group"
             >
+              {c.images?.[0] ? (
+                <img
+                  src={c.images[0].url}
+                  alt=""
+                  className="w-full h-40 object-cover rounded-xl mb-4 border border-slate-700/50"
+                />
+              ) : (
+                <div className="w-full h-40 rounded-xl mb-4 bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">
+                  <span className="text-slate-600 text-sm">No image</span>
+                </div>
+              )}
               <span className="text-xs text-amber-400/90 uppercase tracking-wider font-medium">
                 {c.category}
               </span>

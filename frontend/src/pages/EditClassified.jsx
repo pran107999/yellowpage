@@ -23,11 +23,24 @@ export default function EditClassified() {
   const initialData = myClassifieds.find((c) => c.id === id) || null;
 
   const updateMutation = useMutation({
-    mutationFn: (data) =>
-      api.put(`/classifieds/${id}`, {
-        ...data,
-        cityIds: data.visibility === 'selected_cities' ? data.cityIds : undefined,
-      }),
+    mutationFn: (data) => {
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      formData.append('category', data.category);
+      formData.append('visibility', data.visibility || 'all_cities');
+      formData.append('status', data.status || 'draft');
+      if (data.contact_email !== undefined) formData.append('contact_email', data.contact_email);
+      if (data.contact_phone !== undefined) formData.append('contact_phone', data.contact_phone);
+      if (data.visibility === 'selected_cities' && data.cityIds?.length) {
+        formData.append('cityIds', JSON.stringify(data.cityIds));
+      }
+      if (data.removeImageIds?.length) {
+        formData.append('removeImageIds', JSON.stringify(data.removeImageIds));
+      }
+      (data.images || []).forEach((file) => formData.append('images', file));
+      return api.put(`/classifieds/${id}`, formData);
+    },
     onSuccess: () => {
       toast.success('Classified updated!');
       navigate('/my-classifieds');

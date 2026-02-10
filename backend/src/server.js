@@ -39,7 +39,7 @@ initSocket(server);
 
 server.listen(PORT, () => {
   const protocol = server instanceof https.Server ? 'https' : 'http';
-  console.log(`Yellow Page API running on ${protocol}://localhost:${PORT}`);
+  console.log(`DesiNetwork API running on ${protocol}://localhost:${PORT}`);
   if (!process.env.RESEND_API_KEY) {
     console.log('Email: RESEND_API_KEY not set — OTP will be logged to console only.');
   } else {

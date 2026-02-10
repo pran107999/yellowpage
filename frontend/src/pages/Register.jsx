@@ -31,7 +31,7 @@ export default function Register() {
     <div className="max-w-md mx-auto px-4 py-16 md:py-24">
       <div className="text-center mb-10">
         <h1 className="font-display text-4xl text-amber-400 mb-2">Create account</h1>
-        <p className="text-slate-400">Join Yellow Page to post your ads</p>
+        <p className="text-slate-400">Join DesiNetwork to post your ads</p>
       </div>
       <form
         onSubmit={handleSubmit(onSubmit)}

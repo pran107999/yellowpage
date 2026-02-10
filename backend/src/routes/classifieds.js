@@ -9,6 +9,7 @@ const {
   deleteClassified,
 } = require('../controllers/classifiedController');
 const { auth, requireVerifiedEmail } = require('../middleware/auth');
+const { classifiedImagesUpload } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.post(
   '/',
   auth,
   requireVerifiedEmail,
+  classifiedImagesUpload,
   [
     body('title').trim().notEmpty().isLength({ max: 500 }),
     body('description').trim().notEmpty(),
@@ -35,6 +37,7 @@ router.put(
   '/:id',
   auth,
   requireVerifiedEmail,
+  classifiedImagesUpload,
   [
     body('title').optional().trim().notEmpty().isLength({ max: 500 }),
     body('description').optional().trim().notEmpty(),

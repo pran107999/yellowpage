@@ -1,6 +1,10 @@
+const fs = require('fs');
+const path = require('path');
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
 const { emitClassifiedsChanged, emitAdminChanged } = require('../socket');
+
+const UPLOADS_BASE = path.join(__dirname, '..', '..', 'uploads');
 
 const getStats = async (req, res) => {
   try {
@@ -47,7 +51,12 @@ const getAllClassifieds = async (req, res) => {
            JOIN cities ct ON cc.city_id = ct.id
            WHERE cc.classified_id = c.id),
           '[]'::json
-        ) as selected_cities
+        ) as selected_cities,
+        COALESCE(
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+           FROM classified_images ci WHERE ci.classified_id = c.id),
+          '[]'::json
+        ) as images
        FROM classifieds c
        JOIN users u ON c.user_id = u.id
        ORDER BY c.created_at DESC`
@@ -87,6 +96,10 @@ const updateClassifiedStatus = async (req, res) => {
 const deleteClassifiedAdmin = async (req, res) => {
   try {
     const { id } = req.params;
+    const imgRows = await pool.query(
+      'SELECT file_path FROM classified_images WHERE classified_id = $1',
+      [id]
+    );
     const result = await pool.query(
       'DELETE FROM classifieds WHERE id = $1 RETURNING id',
       [id]
@@ -94,6 +107,14 @@ const deleteClassifiedAdmin = async (req, res) => {
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Classified not found' });
+    }
+    const dir = path.join(UPLOADS_BASE, 'classifieds', id);
+    if (fs.existsSync(dir)) {
+      for (const row of imgRows.rows) {
+        const absPath = path.join(UPLOADS_BASE, row.file_path);
+        if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
+      }
+      fs.rmSync(dir, { recursive: true });
     }
     emitClassifiedsChanged();
     res.json({ message: 'Classified deleted successfully' });

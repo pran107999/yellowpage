@@ -1,7 +1,7 @@
 const { Pool } = require('pg');
 
 // Default: use system username on Mac (Postgres default); override with DATABASE_URL
-const defaultUrl = process.env.DATABASE_URL || `postgresql://${process.env.USER || 'postgres'}@localhost:5432/yellowpage`;
+const defaultUrl = process.env.DATABASE_URL || `postgresql://${process.env.USER || 'postgres'}@localhost:5432/desinetwork`;
 const pool = new Pool({
   connectionString: defaultUrl,
   max: 20,

@@ -1,12 +1,14 @@
-# Yellow Page - Classifieds Application
+# DesiNetwork - Classifieds Application
 
-A full-stack Yellow Pages-style classifieds application with location-based filtering, user authentication, real-time WebSocket updates, and admin dashboard.
+A full-stack classifieds application with location-based filtering, user authentication, real-time WebSocket updates, and admin dashboard.
 
 📖 **[Full Documentation](DOCUMENTATION.md)** – Setup, API, WebSocket, security, and more.
 
+🚀 **[Deploy to Supabase + Render + Vercel](DEPLOY-SUPABASE.md)** – Step-by-step deployment guide.
+
 ## Tech Stack
 
-- **Backend:** Express.js, PostgreSQL, JWT authentication, bcrypt, Socket.io
+- **Backend:** Express.js, PostgreSQL, JWT authentication, bcrypt, Socket.io, Multer (image uploads)
 - **Frontend:** React, Vite, React Router, Tailwind CSS, React Hook Form, Axios, TanStack Query, Socket.io-client
 - **Database:** PostgreSQL with raw SQL
 
@@ -16,10 +18,12 @@ A full-stack Yellow Pages-style classifieds application with location-based filt
 - **Location filtering:** Filter classifieds by city
 - **User auth:** Register/Login required only for posting ads
 - **CRUD for classifieds:** Create, read, update, delete your own ads
+- **Image uploads:** Optional images per ad (up to 10, max 10MB each; stored locally)
 - **Publishing criteria:** Choose "All cities" or "Selected cities" for each ad
 - **Admin dashboard:** Full portal management (users, classifieds, cities, stats)
 - **Draft/Published:** Ads start as draft; users can publish when ready
 - **Real-time updates:** WebSocket sync across tabs and devices
+- **Email verification:** OTP sent via Resend; unverified users prompted to verify
 
 ## Setup
 
@@ -31,7 +35,7 @@ A full-stack Yellow Pages-style classifieds application with location-based filt
 ### 1. Create PostgreSQL database
 
 ```bash
-createdb yellowpage
+createdb desinetwork
 ```
 
 ### 2. Configure environment
@@ -46,7 +50,7 @@ Example `.env`:
 
 ```
 PORT=3001
-DATABASE_URL=postgresql://postgres:password@localhost:5432/yellowpage
+DATABASE_URL=postgresql://postgres:password@localhost:5432/desinetwork
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
 ```
@@ -64,6 +68,8 @@ npm run db:setup
 npm run db:seed
 ```
 
+> **Existing databases:** Run `npm run db:migrate-classified-images` once to add image support. Run `cd backend && npm run db:migrate-email-verification` to add email verification columns.
+
 ### 4. Run the application
 
 ```bash
@@ -78,8 +84,8 @@ npm run dev
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | admin@yellowpage.com | admin123 |
-| User | user@yellowpage.com | user123 |
+| Admin | admin@desinetwork.com | admin123 |
+| User | user@desinetwork.com | user123 |
 
 ## API Endpoints
 
@@ -87,16 +93,19 @@ npm run dev
 - `GET /api/classifieds` - List published classifieds (query: cityId, category, search)
 - `GET /api/classifieds/:id` - Get single classified
 - `GET /api/cities` - List all cities
+- `GET /api/uploads/*` - Static file serving for uploaded images
 
 ### Auth
 - `POST /api/auth/register` - Register
 - `POST /api/auth/login` - Login
 - `GET /api/auth/me` - Current user (requires auth)
+- `POST /api/auth/verify-email` - Verify email with OTP code
+- `POST /api/auth/resend-verification` - Resend verification email
 
 ### Protected (requires login)
 - `GET /api/classifieds/my` - My classifieds
-- `POST /api/classifieds` - Create classified
-- `PUT /api/classifieds/:id` - Update own classified
+- `POST /api/classifieds` - Create classified (multipart: title, description, etc.; optional `images`)
+- `PUT /api/classifieds/:id` - Update own classified (multipart; optional `images`, `removeImageIds`)
 - `DELETE /api/classifieds/:id` - Delete own classified
 
 ### Admin only
@@ -112,25 +121,29 @@ npm run dev
 ## Project Structure
 
 ```
-yellowpage/
+desinetwork/
 ├── backend/
 │   ├── src/
 │   │   ├── config/db.js
 │   │   ├── controllers/
-│   │   ├── middleware/auth.js
+│   │   ├── middleware/ (auth.js, upload.js)
 │   │   ├── routes/
-│   │   ├── db/schema.sql, setup.js, seed.js
+│   │   ├── db/ (schema.sql, setup.js, seed.js, migrations)
+│   │   ├── services/email.js
 │   │   ├── app.js
-│   │   └── server.js
+│   │   ├── server.js
+│   │   └── socket.js
 │   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
-│   │   ├── lib/api.js
-│   │   ├── pages/
+│   │   ├── lib/
+│   │   ├── pages/ (including VerifyEmail.jsx)
 │   │   └── App.jsx
 │   └── package.json
 ├── package.json
+├── DOCUMENTATION.md
+├── DEPLOY-SUPABASE.md
 └── README.md
 ```

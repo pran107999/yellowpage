@@ -1,14 +1,17 @@
 {
-  "name": "yellowpage-backend",
+  "name": "desinetwork-backend",
   "version": "1.0.0",
-  "description": "Yellow Pages Express backend",
+  "description": "DesiNetwork Express backend",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "db:setup": "node src/db/setup.js",
     "db:seed": "node src/db/seed.js",
-    "db:migrate-email-verification": "node src/db/migrate-email-verification.js"
+    "db:migrate-email-verification": "node src/db/migrate-email-verification.js",
+    "db:seed-images": "node src/db/seed-images-for-classifieds.js",
+    "db:remove-duplicates": "node src/db/remove-duplicate-classifieds.js",
+    "db:sync-image-paths": "node src/db/sync-image-paths.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -17,6 +20,7 @@
     "express": "^4.18.2",
     "express-validator": "^7.0.1",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
     "pg": "^8.11.3",
     "resend": "^6.9.1",
     "socket.io": "^4.8.3",

@@ -35,9 +35,9 @@ async function seed() {
       `INSERT INTO users (email, password_hash, name, role) 
        VALUES ($1, $2, $3, $4) 
        ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
-      ['admin@yellowpage.com', adminHash, 'Admin User', 'admin']
+      ['admin@desinetwork.com', adminHash, 'Admin User', 'admin']
     );
-    console.log('Admin user created: admin@yellowpage.com / admin123');
+    console.log('Admin user created: admin@desinetwork.com / admin123');
 
     // Create test user (password: user123)
     const userHash = await bcrypt.hash('user123', 10);
@@ -46,7 +46,7 @@ async function seed() {
        VALUES ($1, $2, $3, $4) 
        ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash
        RETURNING id`,
-      ['user@yellowpage.com', userHash, 'Test User', 'user']
+      ['user@desinetwork.com', userHash, 'Test User', 'user']
     );
     const userId = userResult.rows[0]?.id;
 

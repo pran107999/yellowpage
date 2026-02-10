@@ -1,4 +1,4 @@
--- Yellow Pages Database Schema
+-- DesiNetwork Database Schema
 
 -- Create tables if not exists
 CREATE TABLE IF NOT EXISTS users (
@@ -43,7 +43,16 @@ CREATE TABLE IF NOT EXISTS classified_cities (
   PRIMARY KEY (classified_id, city_id)
 );
 
+CREATE TABLE IF NOT EXISTS classified_images (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  classified_id UUID NOT NULL REFERENCES classifieds(id) ON DELETE CASCADE,
+  file_path VARCHAR(500) NOT NULL,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_classifieds_user_id ON classifieds(user_id);
+CREATE INDEX IF NOT EXISTS idx_classified_images_classified_id ON classified_images(classified_id);
 CREATE INDEX IF NOT EXISTS idx_classifieds_status ON classifieds(status);
 CREATE INDEX IF NOT EXISTS idx_classifieds_category ON classifieds(category);
 CREATE INDEX IF NOT EXISTS idx_classifieds_created_at ON classifieds(created_at DESC);

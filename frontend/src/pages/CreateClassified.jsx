@@ -15,11 +15,20 @@ export default function CreateClassified() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) =>
-      api.post('/classifieds', {
-        ...data,
-        cityIds: data.visibility === 'selected_cities' ? data.cityIds : undefined,
-      }),
+    mutationFn: (data) => {
+      const formData = new FormData();
+      formData.append('title', data.title);
+      formData.append('description', data.description);
+      formData.append('category', data.category);
+      formData.append('visibility', data.visibility || 'all_cities');
+      if (data.contact_email) formData.append('contact_email', data.contact_email);
+      if (data.contact_phone) formData.append('contact_phone', data.contact_phone);
+      if (data.visibility === 'selected_cities' && data.cityIds?.length) {
+        formData.append('cityIds', JSON.stringify(data.cityIds));
+      }
+      (data.images || []).forEach((file) => formData.append('images', file));
+      return api.post('/classifieds', formData);
+    },
     onSuccess: () => {
       toast.success('Classified created! You can publish it from My Ads.');
       navigate('/my-classifieds');

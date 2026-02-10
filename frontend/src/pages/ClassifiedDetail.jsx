@@ -53,6 +53,28 @@ export default function ClassifiedDetail() {
         <h1 className="font-display text-3xl md:text-4xl text-slate-100 mt-2 mb-6 leading-tight">
           {classified.title}
         </h1>
+        {classified.images?.length > 0 && (
+          <div
+            className={`mb-8 gap-3 ${
+              classified.images.length === 1
+                ? 'flex justify-center'
+                : classified.images.length === 2
+                ? 'grid grid-cols-2'
+                : 'grid grid-cols-2 md:grid-cols-3'
+            }`}
+          >
+            {classified.images.map((img) => (
+              <img
+                key={img.id}
+                src={img.url}
+                alt=""
+                className={`aspect-[4/3] object-cover rounded-xl border border-slate-700/50 ${
+                  classified.images.length === 1 ? 'max-w-xl w-full' : 'w-full'
+                }`}
+              />
+            ))}
+          </div>
+        )}
         <p className="text-slate-300 whitespace-pre-wrap mb-8 leading-relaxed">
           {classified.description}
         </p>
