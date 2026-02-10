@@ -9,6 +9,7 @@
     "db:setup": "node src/db/setup.js",
     "db:seed": "node src/db/seed.js",
     "db:migrate-email-verification": "node src/db/migrate-email-verification.js",
+    "db:migrate-password-reset": "node src/db/migrate-password-reset.js",
     "db:seed-images": "node src/db/seed-images-for-classifieds.js",
     "db:remove-duplicates": "node src/db/remove-duplicate-classifieds.js",
     "db:sync-image-paths": "node src/db/sync-image-paths.js"

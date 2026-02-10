@@ -4,6 +4,13 @@ import toast from 'react-hot-toast';
 import api from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
+const OTP_LENGTH = 6;
+const OTP_REGEX = /^\d{6}$/;
+
+function normalizeCode(input) {
+  return String(input || '').replace(/\s/g, '').trim();
+}
+
 export default function VerifyEmail() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,38 +23,36 @@ export default function VerifyEmail() {
   const requireVerification = location.state?.requireVerification;
   const hasToken = typeof localStorage !== 'undefined' && localStorage.getItem('token');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const trimmed = code.replace(/\s/g, '').trim();
-    if (!/^\d{6}$/.test(trimmed)) {
+    const trimmed = normalizeCode(code);
+    if (!OTP_REGEX.test(trimmed)) {
       toast.error('Please enter the 6-digit code from your email.');
       return;
     }
     setLoading(true);
-    api
-      .post('/auth/verify-email', { code: trimmed })
-      .then(() => {
-        setSuccess(true);
-        refreshUser?.();
-        toast.success('Email verified successfully.');
-      })
-      .catch((err) => {
-        toast.error(err.response?.data?.error || 'Invalid or expired code.');
-      })
-      .finally(() => setLoading(false));
+    try {
+      await api.post('/auth/verify-email', { code: trimmed });
+      setSuccess(true);
+      refreshUser?.();
+      toast.success('Email verified successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Invalid or expired code.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     setResendLoading(true);
-    api
-      .post('/auth/resend-verification')
-      .then(() => {
-        toast.success('New code sent. Check your inbox.');
-      })
-      .catch((err) => {
-        toast.error(err.response?.data?.error || 'Failed to send code.');
-      })
-      .finally(() => setResendLoading(false));
+    try {
+      await api.post('/auth/resend-verification');
+      toast.success('New code sent. Check your inbox.');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to send code.');
+    } finally {
+      setResendLoading(false);
+    }
   };
 
   if (!authLoading && !user && !hasToken) {
@@ -61,9 +66,9 @@ export default function VerifyEmail() {
   if (!user && !emailFromState) {
     if (authLoading || hasToken) {
       return (
-        <div className="max-w-md mx-auto px-4 py-16 md:py-24 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] px-4">
           <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin mb-4" />
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-slate-400">Loading your account...</p>
         </div>
       );
     }
@@ -109,16 +114,16 @@ export default function VerifyEmail() {
               type="text"
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={6}
+              maxLength={OTP_LENGTH}
               placeholder="000000"
               value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH))}
               className="input-base text-center text-2xl tracking-[0.4em] font-mono"
             />
           </div>
           <button
             type="submit"
-            disabled={loading || code.length !== 6}
+            disabled={loading || code.length !== OTP_LENGTH}
             className="btn-primary w-full py-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Verifying...' : 'Verify email'}
@@ -135,12 +140,12 @@ export default function VerifyEmail() {
             {resendLoading ? 'Sending...' : 'Resend code'}
           </button>
         </p>
+        {import.meta.env.DEV && (
+          <p className="text-center text-slate-500 text-xs mt-4">
+            In development, if the email didn’t arrive, check the backend terminal for the 6-digit code.
+          </p>
+        )}
       </div>
-      <p className="text-center text-slate-500 mt-8">
-        <Link to="/classifieds" className="text-amber-400 hover:text-amber-300 hover:underline">
-          Skip for now
-        </Link>
-      </p>
     </div>
   );
 }

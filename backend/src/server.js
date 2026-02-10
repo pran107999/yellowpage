@@ -44,5 +44,8 @@ server.listen(PORT, () => {
     console.log('Email: RESEND_API_KEY not set — OTP will be logged to console only.');
   } else {
     console.log('Email: Resend configured — verification emails will be sent.');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Email: Resend free tier may only deliver to your verified address; OTP is also printed in the console.');
+    }
   }
 });

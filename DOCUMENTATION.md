@@ -274,7 +274,7 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 ### Email validation and verification
 
 - **Validation:** Email format is validated on both frontend (Register form pattern) and backend (`express-validator` `isEmail()` on register/login).
-- **Verification:** On register, a 6-digit one-time passcode (OTP) is sent to the user’s email via [Resend](https://resend.com). If `RESEND_API_KEY` is not set, the OTP is logged to the server console. The user enters the code on the `/verify-email` page. Login and `/auth/me` return `emailVerified: true/false`. Unverified users see a banner with “Enter code” and “Resend code”.
+- **Verification:** On register, a 6-digit one-time passcode (OTP) is sent to the user’s email via [Resend](https://resend.com). If `RESEND_API_KEY` is not set, the OTP is logged to the server console only. With Resend’s free tier in development, delivery may be limited to your verified email in the Resend dashboard; the OTP is always printed in the backend console in non-production so you can verify without email. The user enters the code on the `/verify-email` page. Login and `/auth/me` return `emailVerified: true/false`. Unverified users see a banner with “Enter code” and “Resend code”.
 - **Database:** Run `npm run db:migrate-email-verification` in the backend once to add `email_verified_at`, `email_verification_token`, and `email_verification_expires_at` to the `users` table. New installs using `schema.sql` already include these columns.
 
 ---
