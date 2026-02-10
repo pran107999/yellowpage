@@ -66,9 +66,9 @@ export default function VerifyEmail() {
   if (!user && !emailFromState) {
     if (authLoading || hasToken) {
       return (
-        <div className="max-w-md mx-auto px-4 py-16 md:py-24 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] px-4">
           <div className="w-12 h-12 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin mb-4" />
-          <p className="text-slate-400">Loading...</p>
+          <p className="text-slate-400">Loading your account...</p>
         </div>
       );
     }
@@ -140,12 +140,12 @@ export default function VerifyEmail() {
             {resendLoading ? 'Sending...' : 'Resend code'}
           </button>
         </p>
+        {import.meta.env.DEV && (
+          <p className="text-center text-slate-500 text-xs mt-4">
+            In development, if the email didn’t arrive, check the backend terminal for the 6-digit code.
+          </p>
+        )}
       </div>
-      <p className="text-center text-slate-500 mt-8">
-        <Link to="/classifieds" className="text-amber-400 hover:text-amber-300 hover:underline">
-          Skip for now
-        </Link>
-      </p>
     </div>
   );
 }
