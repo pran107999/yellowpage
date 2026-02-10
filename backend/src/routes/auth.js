@@ -1,6 +1,6 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, me, verifyEmail, resendVerification } = require('../controllers/authController');
+const { register, login, me, verifyEmail, resendVerification, forgotPassword, resetPassword } = require('../controllers/authController');
 const { auth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -27,5 +27,20 @@ router.post(
 router.get('/me', auth, me);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verification', auth, resendVerification);
+
+router.post(
+  '/forgot-password',
+  [body('email').isEmail().normalizeEmail()],
+  forgotPassword
+);
+
+router.post(
+  '/reset-password',
+  [
+    body('code').trim().notEmpty().isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  ],
+  resetPassword
+);
 
 module.exports = router;

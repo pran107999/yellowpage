@@ -25,7 +25,6 @@ async function seed() {
     );
     if (classifiedsCheck.rows.length > 0) {
       console.log('Database already seeded with sample data. Skipping.');
-      await pool.end();
       return;
     }
 

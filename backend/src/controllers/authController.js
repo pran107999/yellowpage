@@ -2,12 +2,19 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
-const { sendVerificationOtp } = require('../services/email');
+const { sendVerificationOtp, sendPasswordResetOtp } = require('../services/email');
 const {
   createOtpWithExpiry,
   storeOtpForUser,
   verifyOtpCode,
 } = require('../services/emailVerificationService');
+const {
+  createOtpWithExpiry: createResetOtp,
+  storeResetOtpForUser,
+  findUserByResetOtp,
+  clearResetOtp,
+  normalizeOtpCode: normalizeResetOtpCode,
+} = require('../services/passwordResetService');
 
 /** Verified if they have verified_at set, or are legacy users (no token, never had OTP flow). */
 function isEmailVerified(row) {
@@ -166,4 +173,78 @@ const resendVerification = async (req, res) => {
   }
 };
 
-module.exports = { register, login, me, verifyEmail, resendVerification };
+/** Forgot password: send reset OTP to email (body: { email }) */
+const forgotPassword = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { email } = req.body;
+
+    const result = await pool.query(
+      'SELECT id, email, name FROM users WHERE email = $1',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ message: 'If an account exists, a reset code has been sent.' });
+    }
+
+    const user = result.rows[0];
+    const { otp, expiresAt } = createResetOtp();
+    await storeResetOtpForUser(user.id, otp, expiresAt);
+
+    try {
+      await sendPasswordResetOtp(user.email, user.name, otp);
+    } catch (emailErr) {
+      console.error('Password reset email failed:', emailErr);
+      return res.status(500).json({ error: 'Failed to send reset email. Try again later.' });
+    }
+
+    res.json({ message: 'If an account exists, a reset code has been sent to your email.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ error: 'Request failed' });
+  }
+};
+
+/** Reset password with OTP (body: { code, password }) */
+const resetPassword = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+    const { code, password } = req.body;
+
+    const normalizedCode = normalizeResetOtpCode(code);
+    if (!normalizedCode) {
+      return res.status(400).json({ error: 'Please enter the 6-digit code from your email.' });
+    }
+
+    const user = await findUserByResetOtp(normalizedCode);
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired code. Request a new one.' });
+    }
+
+    const now = new Date();
+    if (!user.password_reset_expires_at || user.password_reset_expires_at < now) {
+      return res.status(400).json({ error: 'This code has expired. Request a new one.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
+      passwordHash,
+      user.id,
+    ]);
+    await clearResetOtp(user.id);
+
+    res.json({ message: 'Password reset successfully. You can sign in with your new password.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ error: 'Reset failed' });
+  }
+};
+
+module.exports = { register, login, me, verifyEmail, resendVerification, forgotPassword, resetPassword };
