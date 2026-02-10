@@ -1,4 +1,5 @@
 const { Resend } = require('resend');
+const { OTP_EXPIRY_MINUTES } = require('./emailVerificationService');
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const APP_NAME = process.env.APP_NAME || 'DesiNetwork';
@@ -7,6 +8,12 @@ const FROM = process.env.EMAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`;
 
 function isConfigured() {
   return Boolean(process.env.RESEND_API_KEY);
+}
+
+/** In dev, Resend test mode only allows sending to verified email. Don't fail registration. */
+function isResendTestRestriction(error) {
+  const msg = error?.message || '';
+  return process.env.NODE_ENV !== 'production' && /only send testing emails to your own email/i.test(msg);
 }
 
 /**
@@ -22,7 +29,7 @@ async function sendVerificationOtp(email, name, otp) {
     console.log('\n---------- Verification OTP (use this if email does not arrive) ----------');
     console.log('  Email:', email);
     console.log('  Code: ', otp);
-    console.log('  Expires in 15 minutes.');
+    console.log(`  Expires in ${OTP_EXPIRY_MINUTES} minutes.`);
     console.log('---------------------------------------------------------------------------\n');
   }
 
@@ -40,18 +47,13 @@ async function sendVerificationOtp(email, name, otp) {
     <p>Hi ${name || 'there'},</p>
     <p>Your verification code for ${APP_NAME} is:</p>
     <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; color: #f59e0b;">${otp}</p>
-    <p>This code expires in 15 minutes. If you didn't request this, you can ignore this email.</p>
+    <p>This code expires in ${OTP_EXPIRY_MINUTES} minutes. If you didn't request this, you can ignore this email.</p>
   `,
-      text: `Your ${APP_NAME} verification code is: ${otp}. It expires in 15 minutes.`,
+      text: `Your ${APP_NAME} verification code is: ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
     });
     if (error) {
       console.error('[Email] Resend error:', JSON.stringify(error, null, 2));
-      // In dev, Resend test mode only allows sending to your verified email. Don't fail registration.
-      const isResendTestRestriction =
-        process.env.NODE_ENV !== 'production' &&
-        error.statusCode === 403 &&
-        /only send testing emails to your own email/i.test(error.message || '');
-      if (isResendTestRestriction) {
+      if (isResendTestRestriction(error)) {
         console.warn('[Email] Resend test mode: emails only go to your verified address. Use the OTP printed above to verify.');
         return;
       }
@@ -61,11 +63,7 @@ async function sendVerificationOtp(email, name, otp) {
   } catch (err) {
     console.error('[Email] Send failed:', err.message);
     if (logOtp) console.log('[Email] Use the OTP printed above to verify.');
-    // Same dev bypass if the error was thrown from our code above (e.g. after JSON parse)
-    const isResendTestRestriction =
-      process.env.NODE_ENV !== 'production' &&
-      /only send testing emails to your own email/i.test(err.message || '');
-    if (isResendTestRestriction) {
+    if (isResendTestRestriction(err)) {
       console.warn('[Email] Resend test mode: use the OTP printed above to verify.');
       return;
     }
