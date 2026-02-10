@@ -5,7 +5,7 @@ const { OTP_EXPIRY_MINUTES: RESET_OTP_EXPIRY } = require('./passwordResetService
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const APP_NAME = process.env.APP_NAME || 'DesiNetwork';
 // Resend: use onboarding@resend.dev until you verify a domain (same as Resend docs)
-const FROM = process.env.EMAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`;
+const FROM = (process.env.EMAIL_FROM || `${APP_NAME} <onboarding@resend.dev>`).trim();
 // In dev, send to Resend's test inbox so you can see emails at https://resend.com/emails
 const DEV_TO = process.env.NODE_ENV !== 'production' && process.env.EMAIL_DEV_TO
   ? process.env.EMAIL_DEV_TO
@@ -102,6 +102,7 @@ async function sendPasswordResetOtp(email, name, otp) {
     const to = DEV_TO ? [DEV_TO] : [email];
     if (DEV_TO) console.log('[Email] Dev mode: sending to', DEV_TO, '(actual recipient:', email, ')');
     else console.log('[Email] Sending password reset OTP to', email);
+    console.log('[Email] Using from:', FROM);
 
     const { data, error } = await resend.emails.send({
       from: FROM,

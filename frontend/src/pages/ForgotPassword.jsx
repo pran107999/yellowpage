@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
@@ -7,20 +7,36 @@ import api from '../lib/api';
 export default function ForgotPassword() {
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [slowMessage, setSlowMessage] = useState(false);
+  const slowTimer = useRef(null);
 
   const { register, handleSubmit, formState: { errors } } = useForm();
 
+  useEffect(() => {
+    return () => {
+      if (slowTimer.current) clearTimeout(slowTimer.current);
+    };
+  }, []);
+
   const onSubmit = async (data) => {
     setLoading(true);
+    setSlowMessage(false);
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    slowTimer.current = setTimeout(() => setSlowMessage(true), 15000);
     try {
       await api.post('/auth/forgot-password', { email: data.email });
       setSent(true);
       toast.success('Check your email for the reset code.');
     } catch (err) {
-      const msg = err.response?.data?.error || 'Failed to send reset code. Try again.';
+      const msg = err.response?.data?.error || err.message || 'Failed to send reset code. Try again.';
       toast.error(msg);
     } finally {
       setLoading(false);
+      setSlowMessage(false);
+      if (slowTimer.current) {
+        clearTimeout(slowTimer.current);
+        slowTimer.current = null;
+      }
     }
   };
 
@@ -75,6 +91,11 @@ export default function ForgotPassword() {
         >
           {loading ? 'Sending...' : 'Send reset code'}
         </button>
+        {slowMessage && (
+          <p className="text-amber-400/90 text-sm text-center mt-2">
+            Server may be waking up—this can take up to a minute. Please wait or try again.
+          </p>
+        )}
       </form>
       <p className="text-center text-slate-500 mt-8">
         <Link to="/login" className="text-amber-400 hover:text-amber-300 hover:underline">

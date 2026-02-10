@@ -49,7 +49,7 @@ const register = async (req, res) => {
     const result = await pool.query(
       `INSERT INTO users (email, password_hash, name, role, email_verification_token, email_verification_expires_at)
        VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id, email, name, role, email_verified_at`,
+       RETURNING id, email, name, role, email_verified_at, email_verification_token`,
       [email, passwordHash, name, 'user', otp, expiresAt]
     );
 
@@ -188,6 +188,7 @@ const forgotPassword = async (req, res) => {
     );
 
     if (result.rows.length === 0) {
+      // Don't reveal if email exists; still return success
       return res.json({ message: 'If an account exists, a reset code has been sent.' });
     }
 
@@ -196,6 +197,7 @@ const forgotPassword = async (req, res) => {
     await storeResetOtpForUser(user.id, otp, expiresAt);
 
     try {
+      console.log('[Auth] Sending password reset email to registered user');
       await sendPasswordResetOtp(user.email, user.name, otp);
     } catch (emailErr) {
       console.error('Password reset email failed:', emailErr);
