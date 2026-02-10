@@ -33,7 +33,8 @@
    postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
    ```
 6. Replace `[YOUR-PASSWORD]` with the database password you created in Step 1
-7. Save this string — you'll use it as `DATABASE_URL` when deploying
+7. **Important:** If your password contains `@`, `#`, or `[` `]`, URL-encode them: `@` → `%40`, `#` → `%23`
+8. Save this string — you'll use it as `DATABASE_URL` when deploying
 
 ---
 
@@ -63,10 +64,12 @@
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`
 7. Click **Advanced** (or scroll down) and add **Environment Variables**:
-   - `DATABASE_URL` = paste the Supabase connection string from Step 3
+   - `DATABASE_URL` = paste the Supabase connection string from Step 3 (encode `@` in password as `%40`)
    - `JWT_SECRET` = any long random string (e.g. `my-super-secret-jwt-key-12345`)
    - `RESEND_API_KEY` = your Resend API key (from https://resend.com/api-keys)
    - `FRONTEND_URL` = your Vercel URL (add after you deploy frontend, e.g. `https://xxx.vercel.app`)
+   - `SUPABASE_URL` = your Supabase Project URL (e.g. `https://xxx.supabase.co`)
+   - `SUPABASE_SERVICE_KEY` = your Supabase service_role key (for image storage — see [SUPABASE-STORAGE-SETUP.md](SUPABASE-STORAGE-SETUP.md))
    - `NODE_ENV` = `production`
 8. Click **Create Web Service**
 9. Wait for the deploy to finish
@@ -77,26 +80,18 @@
 
 ## Part 3: Deploy Frontend to Vercel
 
-### Step 6: Update Frontend to Call Your Backend
-Your frontend (Vercel) and backend (Render) are on different domains. The frontend must use your backend's full URL.
+The frontend uses **`vercel.json`** to proxy `/api` and `/socket.io` to your Render backend. No env vars or code changes needed — just update the proxy URL in `vercel.json` if your Render URL differs.
 
-**Make these 2 code changes:**
-
-1. **`frontend/src/lib/api.js`** — change line 4 to:
-   ```
-   baseURL: (import.meta.env.VITE_BACKEND_URL || '') + '/api' || '/api',
-   ```
-   (Or: `baseURL: import.meta.env.VITE_BACKEND_URL ? import.meta.env.VITE_BACKEND_URL + '/api' : '/api'`)
-
-2. **`frontend/src/lib/socket.js`** — change line 3 from `VITE_API_URL` to `VITE_BACKEND_URL`:
-   ```
-   const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || '';
-   ```
-   (The socket needs the base URL without `/api`)
-
-3. When deploying to Vercel (Step 7), add this env var:
-   - **Name**: `VITE_BACKEND_URL`
-   - **Value**: `https://desinetwork-backend.onrender.com` (your Render URL from Step 5 — no trailing slash, no `/api`)
+**Edit `frontend/vercel.json`** — replace the backend URL with your actual Render URL:
+```json
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://YOUR-RENDER-URL.onrender.com/api/:path*" },
+    { "source": "/socket.io/:path*", "destination": "https://YOUR-RENDER-URL.onrender.com/socket.io/:path*" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
+```
 
 ### Step 6b: Allow Your Frontend in Backend CORS
 In Render, add this env var to your backend service:
@@ -115,12 +110,9 @@ In Render, add this env var to your backend service:
    - **Framework Preset**: Vite
    - **Build Command**: `npm run build` (usually auto-detected)
    - **Output Directory**: `dist` (usually auto-detected)
-6. Add Environment Variable:
-   - **Name**: `VITE_BACKEND_URL`
-   - **Value**: `https://desinetwork-backend.onrender.com` (your Render URL from Step 5)
-7. Click **Deploy**
-8. Wait for it to finish
-9. Copy your frontend URL (e.g. `https://yellowpage-xxx.vercel.app`)
+6. Click **Deploy**
+7. Wait for it to finish
+8. Copy your frontend URL (e.g. `https://yellowpage-xxx.vercel.app`)
 
 ---
 
@@ -150,15 +142,37 @@ In Render, add this env var to your backend service:
 
 | What              | URL / Where                    |
 |-------------------|--------------------------------|
-| Database          | Supabase (cloud)               |
+| Database          | Supabase (PostgreSQL)          |
+| Images            | Supabase Storage               |
 | Backend           | Render (e.g. `xxx.onrender.com`) |
-| Frontend          | Vercel (e.g. `xxx.vercel.app`) |
-| Your custom domain | Points to Vercel              |
+| Frontend          | Vercel (proxies to Render)     |
+| Custom domain     | GoDaddy → Vercel              |
+
+### Seeding the database
+
+After Step 3, run the seed locally against Supabase to create admin/test users and sample data:
+
+```bash
+# In backend/.env, set DATABASE_URL to your Supabase connection string (with password URL-encoded)
+npm run db:seed
+```
+
+This creates `admin@desinetwork.com` / `admin123` and `user@desinetwork.com` / `user123`.
+
+---
+
+## Part 5: Supabase Storage for Images (required for production)
+
+On Render's free tier, the filesystem is ephemeral — images saved locally are lost when the app restarts. **Configure Supabase Storage** for persistent images:
+
+📖 See **[SUPABASE-STORAGE-SETUP.md](SUPABASE-STORAGE-SETUP.md)** for:
+- Creating the `classified-images` bucket
+- Adding `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` to Render
 
 ---
 
 ## Notes
 
-- **File uploads**: Images are still saved on the backend's disk. On Render's free tier, the filesystem is temporary — uploads may be lost when the app restarts. For persistent images, you'd later migrate to Supabase Storage (separate guide).
-- **Backend sleep**: On Render free tier, the backend sleeps after ~15 min of no traffic. The first request after sleep may take 30–60 seconds.
-- **CORS**: If the frontend and backend are on different domains, you may need CORS configured. Check `backend/src/app.js` for `cors()` — it may already allow all origins.
+- **File uploads**: Must use Supabase Storage (Part 5). Without it, images are lost on Render restarts.
+- **Backend sleep**: Render free tier sleeps after ~15 min of no traffic; first request may take 30–60 seconds.
+- **Proxy**: Vercel rewrites `/api` and `/socket.io` to Render; frontend uses same-origin requests.

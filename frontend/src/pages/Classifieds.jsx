@@ -82,6 +82,11 @@ export default function Classifieds() {
                   src={c.images[0].url}
                   alt=""
                   className="w-full h-40 object-cover rounded-xl mb-4 border border-slate-700/50"
+                  loading="lazy"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" fill="%23334155"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2374758b" font-size="12">No image</text></svg>';
+                  }}
                 />
               ) : (
                 <div className="w-full h-40 rounded-xl mb-4 bg-slate-800/50 border border-slate-700/50 flex items-center justify-center">

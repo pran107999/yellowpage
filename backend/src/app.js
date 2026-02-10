@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const cors = require('cors');
+const { isSupabaseStorage } = require('./services/storage');
 const authRoutes = require('./routes/auth');
 const classifiedRoutes = require('./routes/classifieds');
 const cityRoutes = require('./routes/cities');
@@ -27,7 +28,10 @@ app.use('/api/cities', cityRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  res.json({
+    status: 'ok',
+    storage: isSupabaseStorage() ? 'supabase' : 'local (images may not persist on Render)',
+  });
 });
 
 app.use((err, req, res, next) => {

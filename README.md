@@ -6,9 +6,11 @@ A full-stack classifieds application with location-based filtering, user authent
 
 🚀 **[Deploy to Supabase + Render + Vercel](DEPLOY-SUPABASE.md)** – Step-by-step deployment guide.
 
+🗄️ **[Supabase Storage for Images](SUPABASE-STORAGE-SETUP.md)** – Persistent image storage (required for production).
+
 ## Tech Stack
 
-- **Backend:** Express.js, PostgreSQL, JWT authentication, bcrypt, Socket.io, Multer (image uploads)
+- **Backend:** Express.js, PostgreSQL, JWT authentication, bcrypt, Socket.io, Multer, Supabase Storage (images)
 - **Frontend:** React, Vite, React Router, Tailwind CSS, React Hook Form, Axios, TanStack Query, Socket.io-client
 - **Database:** PostgreSQL with raw SQL
 
@@ -18,7 +20,7 @@ A full-stack classifieds application with location-based filtering, user authent
 - **Location filtering:** Filter classifieds by city
 - **User auth:** Register/Login required only for posting ads
 - **CRUD for classifieds:** Create, read, update, delete your own ads
-- **Image uploads:** Optional images per ad (up to 10, max 10MB each; stored locally)
+- **Image uploads:** Optional images per ad (up to 10, max 10MB each; Supabase Storage in production)
 - **Publishing criteria:** Choose "All cities" or "Selected cities" for each ad
 - **Admin dashboard:** Full portal management (users, classifieds, cities, stats)
 - **Draft/Published:** Ads start as draft; users can publish when ready
@@ -51,8 +53,11 @@ Example `.env`:
 ```
 PORT=3001
 DATABASE_URL=postgresql://postgres:password@localhost:5432/desinetwork
+SUPABASE_URL=https://your-project.supabase.co        # For image storage (see SUPABASE-STORAGE-SETUP.md)
+SUPABASE_SERVICE_KEY=your-service-role-key
 JWT_SECRET=your-super-secret-jwt-key
 JWT_EXPIRES_IN=7d
+RESEND_API_KEY=your-resend-key                       # For email verification
 ```
 
 ### 3. Install dependencies and setup database
@@ -93,7 +98,7 @@ npm run dev
 - `GET /api/classifieds` - List published classifieds (query: cityId, category, search)
 - `GET /api/classifieds/:id` - Get single classified
 - `GET /api/cities` - List all cities
-- `GET /api/uploads/*` - Static file serving for uploaded images
+- `GET /api/uploads/*` - Static file serving (local dev only; production uses Supabase Storage URLs)
 
 ### Auth
 - `POST /api/auth/register` - Register
@@ -130,11 +135,13 @@ desinetwork/
 │   │   ├── routes/
 │   │   ├── db/ (schema.sql, setup.js, seed.js, migrations)
 │   │   ├── services/email.js
+│   │   ├── services/storage.js    # Supabase Storage for images
 │   │   ├── app.js
 │   │   ├── server.js
 │   │   └── socket.js
 │   └── package.json
 ├── frontend/
+│   ├── vercel.json                # Proxies /api and /socket.io to Render
 │   ├── src/
 │   │   ├── components/
 │   │   ├── context/
@@ -145,5 +152,6 @@ desinetwork/
 ├── package.json
 ├── DOCUMENTATION.md
 ├── DEPLOY-SUPABASE.md
+├── SUPABASE-STORAGE-SETUP.md
 └── README.md
 ```

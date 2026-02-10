@@ -71,6 +71,11 @@ export default function ClassifiedDetail() {
                 className={`aspect-[4/3] object-cover rounded-xl border border-slate-700/50 ${
                   classified.images.length === 1 ? 'max-w-xl w-full' : 'w-full'
                 }`}
+                loading="lazy"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="%23334155"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2374758b" font-size="14">Image unavailable</text></svg>';
+                }}
               />
             ))}
           </div>

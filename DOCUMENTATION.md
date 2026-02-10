@@ -31,7 +31,7 @@ DesiNetwork is a classifieds platform where users can:
 - **Browse** published ads without logging in (with city, category, and search filters)
 - **Register/Login** to post and manage their own ads
 - **Create ads** as drafts and publish when ready
-- **Upload images** (optional, up to 10 images per ad, max 10MB each; stored locally)
+- **Upload images** (optional, up to 10 images per ad, max 10MB each; Supabase Storage in production)
 - **Choose visibility** per ad: All cities or Selected cities only
 - **Admin dashboard** for managing users, classifieds, cities, and viewing stats
 - **Real-time sync** across tabs and devices via WebSocket
@@ -42,7 +42,7 @@ DesiNetwork is a classifieds platform where users can:
 
 | Layer | Technologies |
 |-------|-------------|
-| **Backend** | Node.js, Express, PostgreSQL, JWT, bcrypt, Socket.io, Multer (file uploads) |
+| **Backend** | Node.js, Express, PostgreSQL, JWT, bcrypt, Socket.io, Multer, Supabase Storage |
 | **Frontend** | React 18, Vite, React Router, Tailwind CSS, React Hook Form, Axios, TanStack Query, Socket.io-client |
 | **Database** | PostgreSQL (raw SQL) |
 | **Real-time** | Socket.io (WebSocket) |
@@ -81,11 +81,12 @@ desinetwork/
 │   │   │   ├── seed-images-for-classifieds.js
 │   │   │   └── sync-image-paths.js
 │   │   ├── services/
-│   │   │   └── email.js           # Resend email service (OTP)
+│   │   │   ├── email.js           # Resend email service (OTP)
+│   │   │   └── storage.js         # Supabase Storage for images
 │   │   ├── app.js                 # Express app
 │   │   ├── server.js              # HTTP/HTTPS server + Socket.io
 │   │   └── socket.js              # WebSocket auth, limits, events
-│   ├── uploads/                   # Local image storage (created at runtime)
+│   ├── uploads/                   # Local image storage (fallback when Supabase not configured)
 │   ├── .env.example
 │   └── package.json
 ├── frontend/
@@ -115,6 +116,7 @@ desinetwork/
 │   │   ├── index.css
 │   │   └── main.jsx
 │   ├── index.html
+│   ├── vercel.json                # Proxies /api and /socket.io to backend (production)
 │   ├── tailwind.config.js
 │   ├── vite.config.js
 │   └── package.json
@@ -178,7 +180,7 @@ npm run dev
 - **cities** – id, name, state
 - **classifieds** – id, user_id, title, description, category, contact_email, contact_phone, visibility, status (draft/published)
 - **classified_cities** – junction table for classifieds with selected cities
-- **classified_images** – id, classified_id, file_path, sort_order; stores paths to uploaded images
+- **classified_images** – id, classified_id, file_path, sort_order; `file_path` is either a Supabase public URL or a relative path for local storage
 
 ### Seed behavior
 
@@ -336,13 +338,14 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 | EMAIL_FROM | From address (default: `onboarding@resend.dev`; use your domain after verifying in Resend) |
 | APP_NAME | App name used in email body (default: DesiNetwork) |
 | LOG_OTP_TO_CONSOLE | Set to `true` to always print verification code in server terminal (for testing) |
+| SUPABASE_URL | Supabase project URL for image storage (optional; if unset, images stored locally) |
+| SUPABASE_SERVICE_KEY | Supabase service_role key for uploads (see [SUPABASE-STORAGE-SETUP.md](SUPABASE-STORAGE-SETUP.md)) |
 
 ### Frontend
 
 | Variable | Description |
 |----------|-------------|
-| VITE_API_URL | Backend base URL (empty = same origin). For cross-origin deployment, set to backend URL; see DEPLOY-SUPABASE.md |
-| VITE_USE_WSS | Set to `true` for secure WebSocket |
+| (none required) | Production uses Vercel proxy; frontend calls `/api` (same origin) and `vercel.json` proxies to Render |
 
 ---
 
@@ -366,20 +369,22 @@ Socket.io provides real-time updates when classifieds or admin data changes. Cha
 
 ## Image Uploads
 
-Classifieds support optional image attachments stored in local filesystem.
+Classifieds support optional image attachments. Storage backend is configurable:
+
+- **Production (Supabase):** When `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are set, images are uploaded to Supabase Storage. URLs are public and persistent. See [SUPABASE-STORAGE-SETUP.md](SUPABASE-STORAGE-SETUP.md).
+- **Local dev (fallback):** When Supabase is not configured, images are stored in `backend/uploads/classifieds/{classifiedId}/`.
 
 ### Constraints
 
 - **Formats:** JPEG, PNG, GIF, WebP
 - **Size limit:** 10MB per image
 - **Quantity:** Up to 10 images per classified
-- **Storage:** `backend/uploads/classifieds/{classifiedId}/` (created at runtime)
 
 ### API
 
 - **Create:** Send `multipart/form-data` with field `images` (one or more files)
 - **Update:** Append new files to `images`; send `removeImageIds` (JSON array of UUIDs) to remove existing images
-- **Response:** Each classified includes `images: [{ id, url }]` where `url` is `/api/uploads/classifieds/{id}/{filename}`
+- **Response:** Each classified includes `images: [{ id, url }]` where `url` is either a Supabase public URL or `/api/uploads/classifieds/{id}/{filename}` for local storage
 
 ### Frontend
 
@@ -405,7 +410,8 @@ See **[DEPLOY-SUPABASE.md](DEPLOY-SUPABASE.md)** for step-by-step instructions t
 
 - **Database:** Supabase (PostgreSQL)
 - **Backend:** Render
-- **Frontend:** Vercel
+- **Frontend:** Vercel (proxies `/api` and `/socket.io` to Render via `vercel.json`)
+- **Images:** Supabase Storage (see [SUPABASE-STORAGE-SETUP.md](SUPABASE-STORAGE-SETUP.md))
 - **Custom domain:** GoDaddy (optional)
 
-Notes: File uploads on Render free tier use ephemeral storage; consider Supabase Storage for persistent images.
+**Important:** Configure Supabase Storage for images; otherwise uploads on Render will be lost when the app restarts (ephemeral disk).

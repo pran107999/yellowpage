@@ -1,6 +1,6 @@
 # Supabase Storage Setup for Images
 
-Images are stored in Supabase Storage so they persist (unlike Render's ephemeral disk).
+Images are stored in Supabase Storage so they persist (unlike Render's ephemeral disk). This is **required for production** when deploying to Render.
 
 ## Step 1: Create the storage bucket
 
