@@ -23,7 +23,7 @@ export default function Login() {
       const data = err.response?.data;
       const msg = data?.error
         || (Array.isArray(data?.errors) && data.errors[0]?.msg)
-        || (err.code === 'ERR_NETWORK' ? 'Cannot reach server. Is the backend running on port 3001?' : 'Login failed');
+        || (err.code === 'ERR_NETWORK' ? 'Cannot reach backend. Add VITE_BACKEND_URL in Vercel (Settings → Env Variables), set it to your Render URL, then redeploy.' : 'Login failed');
       toast.error(msg);
     } finally {
       setLoading(false);

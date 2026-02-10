@@ -1,8 +1,14 @@
 import axios from 'axios';
 
+const backendBase = import.meta.env.VITE_BACKEND_URL || '';
+const baseURL = backendBase ? backendBase + '/api' : '/api';
+if (import.meta.env.PROD && !backendBase) {
+  console.warn('[DesiNetwork] VITE_BACKEND_URL is not set. Add it in Vercel → Settings → Environment Variables and redeploy.');
+}
 const api = axios.create({
-  baseURL: import.meta.env.VITE_BACKEND_URL ? import.meta.env.VITE_BACKEND_URL + '/api' : '/api',
+  baseURL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 90000, // 90s for Render cold start on free tier
 });
 
 api.interceptors.request.use((config) => {
