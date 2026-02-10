@@ -23,7 +23,7 @@ export default function Login() {
       const data = err.response?.data;
       const msg = data?.error
         || (Array.isArray(data?.errors) && data.errors[0]?.msg)
-        || (err.code === 'ERR_NETWORK' ? 'Cannot reach server. The backend may be starting up (Render free tier sleeps after inactivity).' : 'Login failed');
+        || (err.code === 'ERR_NETWORK' ? 'Cannot reach server. The backend may be starting up (Render free tier sleeps after inactivity).' : `Login failed${err.response?.status ? ` (${err.response.status})` : ''}`);
       toast.error(msg);
     } finally {
       setLoading(false);

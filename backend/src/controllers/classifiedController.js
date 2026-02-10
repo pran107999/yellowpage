@@ -1,11 +1,10 @@
-const fs = require('fs');
 const path = require('path');
-const { randomUUID } = require('crypto');
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
 const { emitClassifiedsChanged } = require('../socket');
+const { uploadImage, deleteImage } = require('../services/storage');
 
-const UPLOADS_BASE = path.join(__dirname, '..', '..', 'uploads');
+const IMAGE_URL_SQL = `CASE WHEN ci.file_path LIKE 'http%' THEN ci.file_path ELSE '/api/uploads/' || ci.file_path END`;
 
 function parseBodyField(val) {
   if (val === undefined || val === null) return undefined;
@@ -30,7 +29,7 @@ const getClassifieds = async (req, res) => {
           '[]'::json
         ) as selected_cities,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', ${IMAGE_URL_SQL}) ORDER BY ci.sort_order)
            FROM classified_images ci WHERE ci.classified_id = c.id),
           '[]'::json
         ) as images
@@ -85,7 +84,7 @@ const getClassified = async (req, res) => {
           '[]'::json
         ) as selected_cities,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', ${IMAGE_URL_SQL}) ORDER BY ci.sort_order)
            FROM classified_images ci WHERE ci.classified_id = c.id),
           '[]'::json
         ) as images
@@ -136,26 +135,19 @@ const createClassified = async (req, res) => {
     }
 
     const files = req.files?.images || [];
-    if (files.length > 0) {
-      const dir = path.join(UPLOADS_BASE, 'classifieds', classified.id);
-      fs.mkdirSync(dir, { recursive: true });
-      for (let i = 0; i < files.length; i++) {
-        const ext = path.extname(files[i].originalname) || '.jpg';
-        const filename = `${randomUUID()}${ext}`;
-        const relPath = path.join('classifieds', classified.id, filename);
-        const absPath = path.join(UPLOADS_BASE, relPath);
-        fs.writeFileSync(absPath, files[i].buffer);
-        await pool.query(
-          'INSERT INTO classified_images (classified_id, file_path, sort_order) VALUES ($1, $2, $3)',
-          [classified.id, relPath.replace(/\\/g, '/'), i]
-        );
-      }
+    for (let i = 0; i < files.length; i++) {
+      const ext = path.extname(files[i].originalname) || '.jpg';
+      const filePath = await uploadImage(files[i].buffer, ext, classified.id);
+      await pool.query(
+        'INSERT INTO classified_images (classified_id, file_path, sort_order) VALUES ($1, $2, $3)',
+        [classified.id, filePath, i]
+      );
     }
 
     const withImages = await pool.query(
       `SELECT c.*,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', ${IMAGE_URL_SQL}) ORDER BY ci.sort_order)
            FROM classified_images ci WHERE ci.classified_id = c.id),
           '[]'::json
         ) as images
@@ -183,7 +175,7 @@ const getMyClassifieds = async (req, res) => {
           '[]'::json
         ) as selected_cities,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', ${IMAGE_URL_SQL}) ORDER BY ci.sort_order)
            FROM classified_images ci WHERE ci.classified_id = c.id),
           '[]'::json
         ) as images
@@ -259,8 +251,7 @@ const updateClassified = async (req, res) => {
         [id, removeImageIds]
       );
       for (const row of imgResult.rows) {
-        const absPath = path.join(UPLOADS_BASE, row.file_path);
-        if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
+        await deleteImage(row.file_path);
       }
       await pool.query(
         'DELETE FROM classified_images WHERE classified_id = $1 AND id = ANY($2::uuid[])',
@@ -270,8 +261,6 @@ const updateClassified = async (req, res) => {
 
     const files = req.files?.images || [];
     if (files.length > 0) {
-      const dir = path.join(UPLOADS_BASE, 'classifieds', id);
-      fs.mkdirSync(dir, { recursive: true });
       const maxOrder = await pool.query(
         'SELECT COALESCE(MAX(sort_order), -1) as m FROM classified_images WHERE classified_id = $1',
         [id]
@@ -279,13 +268,10 @@ const updateClassified = async (req, res) => {
       let nextOrder = (maxOrder.rows[0]?.m ?? -1) + 1;
       for (const file of files) {
         const ext = path.extname(file.originalname) || '.jpg';
-        const filename = `${randomUUID()}${ext}`;
-        const relPath = path.join('classifieds', id, filename).replace(/\\/g, '/');
-        const absPath = path.join(UPLOADS_BASE, 'classifieds', id, filename);
-        fs.writeFileSync(absPath, file.buffer);
+        const filePath = await uploadImage(file.buffer, ext, id);
         await pool.query(
           'INSERT INTO classified_images (classified_id, file_path, sort_order) VALUES ($1, $2, $3)',
-          [id, relPath, nextOrder++]
+          [id, filePath, nextOrder++]
         );
       }
     }
@@ -300,7 +286,7 @@ const updateClassified = async (req, res) => {
           '[]'::json
         ) as selected_cities,
         COALESCE(
-          (SELECT json_agg(json_build_object('id', ci.id, 'url', '/api/uploads/' || ci.file_path) ORDER BY ci.sort_order)
+          (SELECT json_agg(json_build_object('id', ci.id, 'url', ${IMAGE_URL_SQL}) ORDER BY ci.sort_order)
            FROM classified_images ci WHERE ci.classified_id = c.id),
           '[]'::json
         ) as images
@@ -331,13 +317,8 @@ const deleteClassified = async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Classified not found or access denied' });
     }
-    const dir = path.join(UPLOADS_BASE, 'classifieds', id);
-    if (fs.existsSync(dir)) {
-      for (const row of imgRows.rows) {
-        const absPath = path.join(UPLOADS_BASE, row.file_path);
-        if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
-      }
-      fs.rmSync(dir, { recursive: true });
+    for (const row of imgRows.rows) {
+      await deleteImage(row.file_path);
     }
     emitClassifiedsChanged();
     res.json({ message: 'Classified deleted successfully' });
